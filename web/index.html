@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <title>SAM3 Web Demo</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        padding: 24px;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          "Helvetica Neue", Arial, "Noto Sans", "PingFang SC", "Microsoft YaHei",
+          sans-serif;
+        background: #0f172a;
+        color: #e5e7eb;
+      }
+
+      .container {
+        max-width: 960px;
+        margin: 0 auto;
+        background: rgba(15, 23, 42, 0.9);
+        border-radius: 16px;
+        border: 1px solid rgba(148, 163, 184, 0.4);
+        box-shadow: 0 24px 60px rgba(15, 23, 42, 0.9);
+        padding: 24px 24px 32px;
+      }
+
+      h1 {
+        margin: 0 0 8px;
+        font-size: 24px;
+        font-weight: 700;
+        letter-spacing: 0.03em;
+      }
+
+      .sub-title {
+        font-size: 13px;
+        color: #9ca3af;
+        margin-bottom: 20px;
+      }
+
+      .form-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 16px;
+        align-items: center;
+        margin-bottom: 16px;
+      }
+
+      .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        flex: 1 1 220px;
+        min-width: 0;
+      }
+
+      label {
+        font-size: 13px;
+        color: #d1d5db;
+      }
+
+      input[type="file"] {
+        font-size: 13px;
+        color: #e5e7eb;
+      }
+
+      input[type="text"] {
+        padding: 8px 10px;
+        border-radius: 8px;
+        border: 1px solid rgba(148, 163, 184, 0.7);
+        background: rgba(15, 23, 42, 0.8);
+        color: #e5e7eb;
+        font-size: 13px;
+        outline: none;
+      }
+
+      input[type="text"]:focus {
+        border-color: #38bdf8;
+        box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.4);
+      }
+
+      button {
+        padding: 10px 18px;
+        border-radius: 999px;
+        border: none;
+        outline: none;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 600;
+        letter-spacing: 0.03em;
+        background: linear-gradient(135deg, #22c55e, #22d3ee);
+        color: #0b1120;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      button:disabled {
+        opacity: 0.6;
+        cursor: default;
+      }
+
+      .status {
+        margin-top: 8px;
+        font-size: 13px;
+        color: #9ca3af;
+        min-height: 18px;
+      }
+
+      .preview-wrapper {
+        margin-top: 20px;
+      }
+
+      .panel {
+        border-radius: 12px;
+        border: 1px solid rgba(148, 163, 184, 0.6);
+        background: radial-gradient(circle at top left, #1f2937, #020617);
+        padding: 12px;
+        min-height: 220px;
+      }
+
+      .panel h2 {
+        margin: 0 0 8px;
+        font-size: 14px;
+        font-weight: 600;
+        color: #e5e7eb;
+      }
+
+      .panel-body {
+        border-radius: 10px;
+        background: #020617;
+        padding: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 200px;
+      }
+
+      .panel-body img {
+        max-width: 100%;
+        max-height: 380px;
+        border-radius: 8px;
+        display: block;
+      }
+
+      .placeholder {
+        font-size: 13px;
+        color: #6b7280;
+        text-align: center;
+      }
+
+      @media (max-width: 640px) {
+        .container {
+          padding: 16px 14px 22px;
+        }
+
+        h1 {
+          font-size: 20px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>SAM3 图像分割 Web Demo</h1>
+      <div class="sub-title">
+        选择一张本地图片并输入文本提示，后台只加载一次模型，返回叠加了 mask /
+        bounding box / score 的结果图。
+      </div>
+
+      <div class="form-row">
+        <div class="form-group" style="flex: 1.3 1 260px">
+          <label for="fileInput">选择图片（本地文件）</label>
+          <input id="fileInput" type="file" accept="image/*" />
+        </div>
+      </div>
+
+      <div class="status" id="statusText"></div>
+
+      <div class="preview-wrapper">
+        <div class="panel">
+          <h2>图片与分割结果（mask + bbox + score）</h2>
+          <div class="panel-body">
+            <img id="mainImg" alt="" style="display: none" />
+            <div id="mainPlaceholder" class="placeholder">
+              请选择一张图片。
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-row" style="margin-top: 16px">
+        <div class="form-group" style="flex: 1 1 auto">
+          <label for="promptInput">文本提示（prompt）</label>
+          <input
+            id="promptInput"
+            type="text"
+            placeholder="例如：galaxy, dog, person...（回车键运行）"
+            value="galaxy"
+          />
+        </div>
+        <div class="form-group" style="flex: 0 0 auto; align-items: flex-start">
+          <label style="visibility: hidden">操作</label>
+          <div style="display: flex; gap: 8px">
+            <button id="runBtn" type="button">
+              运行 SAM3
+              <span id="btnSpin" style="display: none">· · ·</span>
+            </button>
+            <button id="resetBtn" type="button">Reset</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const fileInput = document.getElementById("fileInput");
+      const promptInput = document.getElementById("promptInput");
+      const runBtn = document.getElementById("runBtn");
+      const resetBtn = document.getElementById("resetBtn");
+      const statusText = document.getElementById("statusText");
+      const mainImg = document.getElementById("mainImg");
+      const mainPlaceholder = document.getElementById("mainPlaceholder");
+      const btnSpin = document.getElementById("btnSpin");
+
+      let originalUrl = null;
+      let resultUrl = null;
+
+      function setLoading(loading, text) {
+        runBtn.disabled = loading;
+        btnSpin.style.display = loading ? "inline-block" : "none";
+        statusText.textContent = text || "";
+      }
+
+      // 本地预览原始图片
+      fileInput.addEventListener("change", () => {
+        const file = fileInput.files[0];
+        if (!file) {
+          mainImg.style.display = "none";
+          mainPlaceholder.style.display = "block";
+          return;
+        }
+
+        // 释放旧的 URL
+        if (originalUrl) {
+          URL.revokeObjectURL(originalUrl);
+        }
+        if (resultUrl) {
+          URL.revokeObjectURL(resultUrl);
+          resultUrl = null;
+        }
+
+        originalUrl = URL.createObjectURL(file);
+        mainImg.src = originalUrl;
+        mainImg.style.display = "block";
+        mainPlaceholder.style.display = "none";
+      });
+
+      async function runInference() {
+        const file = fileInput.files[0];
+        if (!file) {
+          alert("请先选择一张图片。");
+          return;
+        }
+        const prompt = promptInput.value.trim() || "galaxy";
+
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("prompt", prompt);
+
+        try {
+          setLoading(true, "正在调用 SAM3 推理，请稍候...");
+
+          const resp = await fetch("/api/predict", {
+            method: "POST",
+            body: formData,
+          });
+
+          if (!resp.ok) {
+            throw new Error("后端返回错误：" + resp.status);
+          }
+
+          const blob = await resp.blob();
+
+          // 释放旧的结果 URL
+          if (resultUrl) {
+            URL.revokeObjectURL(resultUrl);
+          }
+          resultUrl = URL.createObjectURL(blob);
+
+          mainImg.src = resultUrl;
+          mainImg.style.display = "block";
+          mainPlaceholder.style.display = "none";
+          setLoading(false, "推理完成。按 Reset 可恢复原图。");
+        } catch (err) {
+          console.error(err);
+          setLoading(false, "调用失败，请查看控制台或后端日志。");
+          alert("调用失败：" + err.message);
+        }
+      }
+
+      runBtn.addEventListener("click", runInference);
+
+      // 在 prompt 输入框内按回车触发推理
+      promptInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          runInference();
+        }
+      });
+
+      // Reset 按钮：恢复为原图
+      resetBtn.addEventListener("click", () => {
+        if (!originalUrl) {
+          alert("当前没有可恢复的原图，请先选择图片。");
+          return;
+        }
+        if (resultUrl) {
+          URL.revokeObjectURL(resultUrl);
+          resultUrl = null;
+        }
+        mainImg.src = originalUrl;
+        mainImg.style.display = "block";
+        mainPlaceholder.style.display = "none";
+        statusText.textContent = "已恢复为原图。";
+      });
+    </script>
+  </body>
+</html>
+
+
